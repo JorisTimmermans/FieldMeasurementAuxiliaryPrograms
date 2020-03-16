@@ -1,0 +1,40 @@
+function [Values]   =   Datalogger2_correction(Values)
+%correcting spikes
+MIN     =   [40,  40,  40,  40,  40,  40,  40,  40,  17,  17,  17,  17 ];
+MAX     =   [165, 165, 165, 165, 165, 165, 165, 165, 144, 144, 144, 144];
+
+for j=1:size(Values.Minutes.Resistance_NTC,2)
+    index   =   find(Values.Minutes.Resistance_NTC(:,j)< MIN(j) | ...
+                     Values.Minutes.Resistance_NTC(:,j)> MAX(j));
+     Values.Minutes.Resistance_NTC(index,j) = NaN;
+end
+
+%because NTC3 has made a short during parts of its running, these short-values have to be removed!
+index   =   find(Values.Minutes.Resistance_NTC(:,3)-20>Values.Minutes.Resistance_NTC(:,1) | ...
+                 Values.Minutes.Resistance_NTC(:,3)+20<Values.Minutes.Resistance_NTC(:,1));
+Values.Minutes.Resistance_NTC(index,3)  =   NaN;
+%No Soil_Heat_Fluxes were measured
+
+Values.Minutes.Soil_Heat_Flux           =   zeros(size(Values.Minutes.Soil_Heat_Flux));
+Values.Minutes.Volume_Water_Content     =   zeros(size(Values.Minutes.Volume_Water_Content));
+
+
+
+%Calibration
+Values.Calibration.Names                =   {'NTC_Temperature';'NTC_Resistance';'NTC_Resistancelog';...
+                                             'Order_Polynome';'Polynomial'};
+
+
+Values.Calibration.NTC_Temperature      =    (-8:20)'*5;
+Values.Calibration.NTC_Resistance       =    [2664 ; 1933 ; 1421 ; 1052 ; 788.5; 594.4; 453.0; 347.6; ...
+                                              269.3; 209.7; 164.8; 130.1; 103.6; 83.00; 66.91; 54.19; ...
+                                              44.18; 36.17; 29.80; 24.65; 20.51; 17.13; 14.37; 12.10; ...
+                                              10.24; 8.700; 7.419; 6.351; 5.460];
+Values.Calibration.NTC_Resistancelog    =   log(Values.Calibration.NTC_Resistance);
+Values.Calibration.Order_Polynome       =   4;
+Values.Calibration.Polynomial           =   polyfit(Values.Calibration.NTC_Resistancelog    ,...
+                                                    Values.Calibration.NTC_Temperature      ,...
+                                                    Values.Calibration.Order_Polynome       );
+Values.Minutes.NTC                      =   polyval(    Values.Calibration.Polynomial       ,...
+                                                    log(Values.Minutes.Resistance_NTC)      );
+
